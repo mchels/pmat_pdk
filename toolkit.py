@@ -32,7 +32,7 @@ class Cell:
 def rotate(component, angle):
     center = component.center
     comp_copy = component.cell.copy()
-    """ Delete old cell contents """
+    # Delete old cell contents
     name = component.cell.name
     component.cell = core.Cell(name)
 
@@ -53,7 +53,7 @@ def rotate(component, angle):
     for name in component.portlist:
         loc = component.portlist[name]
 
-        """ Create vectors & rotation matrix """
+        # Create vectors & rotation matrix
         v=np.array([[loc[0]-center[0]], [loc[1]-center[1]]])
         theta = np.radians(angle)
         c, s = np.cos(theta), np.sin(theta)
@@ -201,7 +201,7 @@ def autogrid(layoutBB, cell_bbs, netlist, meshsize):
     xlist = np.arange(xmin, xmax+meshsize, meshsize)
     ylist = np.arange(ymin, ymax+meshsize, meshsize)
     grid = []
-    """ Make a copy of netlist that isn't a tuple """
+    # Make a copy of netlist that isn't a tuple
     netlist_grid = [None, None]
 
 
@@ -254,7 +254,7 @@ def getWaypoints(corners, netlist_pair, layoutBB, meshsize):
 def findCorners(path, netlist_pair):
     corners = []
     for i in xrange(len(path)):
-        """ First search for normal corners, not on first/last points """
+        # First search for normal corners, not on first/last points
         if i!=0 and i!=(len(path)-1):
             xsame = (path[i][0]==path[i+1][0]==path[i-1][0])
             ysame = (path[i][1]==path[i+1][1]==path[i-1][1])
@@ -262,8 +262,8 @@ def findCorners(path, netlist_pair):
                 corners.append(path[i])
 
         else:
-            """ Now, look to see if first/last points are corners """
-            """ MAY NOT NEED THIS CODE ANYMORE """
+            # Now, look to see if first/last points are corners
+            # MAY NOT NEED THIS CODE ANYMORE
             if i==0:
                 if netlist_pair[0][2]=="EAST" or netlist_pair[0][2]=="WEST":
                     ysame = (path[i][1]==path[i+1][1])
@@ -287,46 +287,46 @@ def findCorners(path, netlist_pair):
 
 def autoroute(topcell, netlist, wg_t, meshsize=None, check_overlaps=True):
     if meshsize==None:
-        """ This default ensures that two corners can't be routed too close
-        to one another """
+        # This default ensures that two corners can't be routed too close
+        # to one another
         meshsize=1.0*wg_t.bend_radius
 
-    """ Make the BBs larger to avoid waveguides getting too close """
+    # Make the BBs larger to avoid waveguides getting too close
     cell_bbs = bounding_boxes(topcell)
 #    for i in xrange(len(cell_bbs)):
 #        cell_bbs[i] = enlarge(cell_bbs[i], wg_t.clad_width)
-    """ Enlarge layout BB to allow routing of waveguides around components """
+    # Enlarge layout BB to allow routing of waveguides around components
     layout_BB = enlarge(topcell.gdscell.bounding_box, wg_t.clad_width + 5*wg_t.bend_radius)
 
-    """ Make sure netlists are accessible from enlarged component BBs """
+    # Make sure netlists are accessible from enlarged component BBs
     netlist_routing = moveNetlists(netlist, wg_t.bend_radius)
 
-    """ By default, OFF.  User is responsible for preventing placement of
-    overlapping components """
+    # By default, OFF.  User is responsible for preventing placement of
+    overlapping components
     if check_overlaps:
         if checkBBoverlaps(cell_bbs):
             raise Exception('At least one cell in the design is overlapping with another cell, or too close for waveguide autorouting')
 
-    """ Convert the net and list of BBs into a square grid that we can route on """
+    # Convert the net and list of BBs into a square grid that we can route on
     grid, netlist_grid = autogrid(layout_BB, cell_bbs, netlist_routing, meshsize)
 
-    """ Uncomment below to visualize the grid generated """
-    """ White = free tile, blue = tile occupied by BB, red = port """
+    # Uncomment below to visualize the grid generated
+    # White = free tile, blue = tile occupied by BB, red = port
     xmin, ymin = layout_BB[0][0], layout_BB[1][0]
 #    visualize_grid(grid, meshsize, xmin, ymin)
 
-    """ Effective bend_radius in units of 'mesh squares' """
+    # Effective bend_radius in units of 'mesh squares'
     br = 1+int(1.5*wg_t.bend_radius/meshsize)
     graph = SquareGrid(grid, br)
     start = (netlist_grid[0][0], netlist_grid[0][1], netlist[0][2])
     end = (netlist_grid[1][0], netlist_grid[1][1], flipDirection(netlist[1][2]))
-    """ Implement A* search algorithm """
+    # Implement A* search algorithm
     came_from, cost_so_far = a_star_search(graph, start, end, xmin, ymin, meshsize, grid)
     path =  reconstruct_path(came_from, start, end)
 
     corners = findCorners(fix_path(path), netlist)
 
-    """ Take the grid path and return entire list of waypoints for the waveguide """
+    # Take the grid path and return entire list of waypoints for the waveguide
     return getWaypoints(corners, netlist, layout_BB, meshsize)
 
 """
@@ -361,8 +361,8 @@ class SquareGrid:
 
     def neighbors(self, id, prev_node):
         (x, y, direction) = id
-        """ Show either only the square in front, or the squares after making
-        a turn left or right """
+        # Show either only the square in front, or the squares after making
+        a turn left or right
         if direction=="NORTH":
             results = [(x,y+1, direction), (x-self.br, y+self.br, "WEST"), (x+self.br, y+self.br, "EAST")]
         if direction=="SOUTH":
@@ -384,11 +384,11 @@ class SquareGrid:
         (xn, yn, d) = next_node
 
         if (xn==x) or (yn==y):
-            """ Check if the next step is straight ahead """
+            # Check if the next step is straight ahead
             return 1
 
         elif ((xn-x)!=0) and ((yn-y)!=0):
-            """ Check if the next step is a bend """
+            # Check if the next step is a bend
             penalty = 10.0
             return 2*self.br + penalty
         else:
@@ -422,7 +422,7 @@ def a_star_search(graph, start, goal, xmin, ymin, meshsize, grid):
                 frontier.put(next, priority)
                 came_from[next] = current
 
-                """ Uncomment below to view algorithm in progress """
+                # Uncomment below to view algorithm in progress
 #                curvalue = grid[current[1]][current[0]]
 #                nexvalue = grid[next[1]][next[0]]
 #                grid[current[1]][current[0]]=3
@@ -452,7 +452,7 @@ def fix_path(path):
         (x1, y1, d1) = path[i]
         (x2, y2, d2) = path[i+1]
         if (d1!=d2):
-            """ Bend detected, add an extra point """
+            # Bend detected, add an extra point
             if d1=="NORTH" or d1=="SOUTH":
                 newpath.append((x1, y2))
             if d1=="WEST" or d1=="EAST":
